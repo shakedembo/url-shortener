@@ -35,7 +35,6 @@ const (
 	GET METHOD = iota
 	POST
 	PATCH
-
 	PUT
 	DELETE
 )
@@ -98,15 +97,15 @@ func requestHandler[T, TE any](
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		var in T
+		var request T
 
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			logger.Printf("error occurred trying to parse the request. Error: `%v`", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		res, err, status := handler(ctx, in)
+		response, err, status := handler(ctx, request)
 		if err != nil {
 			logger.Printf("returning error response to client. Error: `%v`. Status: `%d`", err, status)
 			http.Error(w, err.Error(), status)
@@ -114,7 +113,7 @@ func requestHandler[T, TE any](
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(res); err != nil {
+		if err := json.NewEncoder(w).Encode(response); err != nil {
 			logger.Printf("error occurred trying to parse the response. Error: `%v`", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
