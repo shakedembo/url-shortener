@@ -85,7 +85,7 @@ func AddHandler[T, TE any](
 	}
 
 	router.HandleFunc(pattern, requestHandler[T, TE](LoggerMiddleware[T, TE](handler, logger), timeout, logger)).Methods(m...)
-	logger.Printf("registered a new handler to path: `%s`", pattern)
+	logger.Printf("registered a new handler to path: `%s` with method: `%s`", pattern, m)
 }
 
 func requestHandler[T, TE any](
