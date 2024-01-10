@@ -15,13 +15,13 @@ type UrlShortenerService interface {
 
 type SimpleUrlShortenerService struct {
 	hasher utils.HashProvider[string]
-	dao    DAO
+	dao    DAO[string, string]
 	logger *log.Logger
 }
 
 func NewUrlShorteningService(
 	hasher utils.HashProvider[string],
-	dao DAO,
+	dao DAO[string, string],
 	logger *log.Logger,
 ) *SimpleUrlShortenerService {
 	return &SimpleUrlShortenerService{

@@ -3,16 +3,17 @@ package internal
 import (
 	"context"
 	"log"
+
 	"url-shortener/config"
 
 	"github.com/gocql/gocql"
 )
 
-type DAO interface {
-	Create(ctx context.Context, id, url string) error
-	Read(ctx context.Context, id string) (string, error)
-	Update(ctx context.Context, oldId, newId, url string) error
-	Delete(ctx context.Context, id string) error
+type DAO[T, TE any] interface {
+	Create(ctx context.Context, key T, val TE) error
+	Read(ctx context.Context, key T) (TE, error)
+	Update(ctx context.Context, oldKey, newKey T, newVal TE) error
+	Delete(ctx context.Context, key T) error
 }
 
 type CassandraDAO struct {
@@ -27,7 +28,7 @@ func NewCassandraDAO(config *config.DbConfig, logger *log.Logger) *CassandraDAO 
 	}
 }
 
-func (c *CassandraDAO) Create(ctx context.Context, id, url string) error {
+func (c *CassandraDAO) Create(ctx context.Context, key, val string) error {
 	session, err := c.cluster.CreateSession()
 	if err != nil {
 		c.logger.Printf("Error occurred trying to create a session to db. Error: `%v`", err)
@@ -36,15 +37,15 @@ func (c *CassandraDAO) Create(ctx context.Context, id, url string) error {
 	defer session.Close()
 
 	if err := session.Query(`INSERT INTO "urlShortener".urls (short_code, url) VALUES (?, ?)`,
-		id, url).WithContext(ctx).Exec(); err != nil {
-		c.logger.Printf("Error occurred trying to insert new entry to cassandra id: `%s`, url: `%s`. Error: `%v`", id, url, err)
+		key, val).WithContext(ctx).Exec(); err != nil {
+		c.logger.Printf("Error occurred trying to insert new entry to cassandra key: `%s`, val: `%s`. Error: `%v`", key, val, err)
 		return err
 	}
 
 	return nil
 }
 
-func (c *CassandraDAO) Read(ctx context.Context, id string) (string, error) {
+func (c *CassandraDAO) Read(ctx context.Context, key string) (string, error) {
 	session, err := c.cluster.CreateSession()
 	if err != nil {
 		c.logger.Printf("Error occurred trying to create a session to db. Error: `%v`", err)
@@ -54,15 +55,15 @@ func (c *CassandraDAO) Read(ctx context.Context, id string) (string, error) {
 
 	url := ""
 	if err := session.Query(`SELECT url FROM "urlShortener".urls WHERE short_code = (?)`,
-		id).WithContext(ctx).Consistency(gocql.One).Scan(&url); err != nil {
-		c.logger.Printf("Error occurred trying to read entry from cassandra id: `%s. Error: `%v`", id, err)
+		key).WithContext(ctx).Consistency(gocql.One).Scan(&url); err != nil {
+		c.logger.Printf("Error occurred trying to read entry from cassandra key: `%s. Error: `%v`", key, err)
 		return "", err
 	}
 
 	return url, nil
 }
 
-func (c *CassandraDAO) Update(ctx context.Context, oldId, newId, url string) error {
+func (c *CassandraDAO) Update(ctx context.Context, oldKey, newKey, val string) error {
 	session, err := c.cluster.CreateSession()
 	if err != nil {
 		c.logger.Printf("Error occurred trying to create a session to db. Error: `%v`", err)
@@ -71,22 +72,22 @@ func (c *CassandraDAO) Update(ctx context.Context, oldId, newId, url string) err
 	defer session.Close()
 
 	if err := session.Query(`INSERT INTO "urlShortener".urls (short_code, url) VALUES (?, ?)`,
-		newId, url).WithContext(ctx).Exec(); err != nil {
+		newKey, val).WithContext(ctx).Exec(); err != nil {
 		c.logger.Printf("Error occurred trying to create the entry id: "+
-			"`%s`. Error: `%v`", newId, err)
+			"`%s`. Error: `%v`", newKey, err)
 		return err
 	}
 
 	if err := session.Query(`DELETE FROM "urlShortener".urls WHERE short_code = (?) IF EXISTS`,
-		oldId).WithContext(ctx).Exec(); err != nil {
-		c.logger.Printf("Error occurred trying to delete entry from cassandra id: `%s. Error: `%v`", newId, err)
+		oldKey).WithContext(ctx).Exec(); err != nil {
+		c.logger.Printf("Error occurred trying to delete entry from cassandra id: `%s. Error: `%v`", newKey, err)
 		return err
 	}
 
 	return nil
 }
 
-func (c *CassandraDAO) Delete(ctx context.Context, id string) error {
+func (c *CassandraDAO) Delete(ctx context.Context, key string) error {
 	session, err := c.cluster.CreateSession()
 	if err != nil {
 		c.logger.Printf("Error occurred trying to create a session to db. Error: `%v`", err)
@@ -95,8 +96,8 @@ func (c *CassandraDAO) Delete(ctx context.Context, id string) error {
 	defer session.Close()
 
 	if err := session.Query(`DELETE FROM "urlShortener".urls WHERE short_code = (?) IF EXISTS`,
-		id).WithContext(ctx).Exec(); err != nil {
-		c.logger.Printf("Error occurred trying to delete entry from cassandra id: `%s. Error: `%v`", id, err)
+		key).WithContext(ctx).Exec(); err != nil {
+		c.logger.Printf("Error occurred trying to delete entry from cassandra key: `%s. Error: `%v`", key, err)
 		return err
 	}
 	//TODO: select applied flag from cql return in order to determine if the row exists
