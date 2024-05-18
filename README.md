@@ -1,7 +1,7 @@
 # Url Shortener
 
----
 
+---
 This project is a very simple implementation of a URL shortener service.
 The service is a RESTful service the uses cassandra as db.
 ---
