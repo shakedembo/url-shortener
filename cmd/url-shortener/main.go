@@ -6,11 +6,11 @@ import (
 	"os"
 	"os/signal"
 	"time"
-	"url-shortener/pkg"
 
 	"url-shortener/config"
 	"url-shortener/internal"
 	"url-shortener/internal/utils"
+	"url-shortener/pkg"
 	"url-shortener/server"
 )
 
